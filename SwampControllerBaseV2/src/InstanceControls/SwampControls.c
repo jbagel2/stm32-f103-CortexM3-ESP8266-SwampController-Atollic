@@ -1,0 +1,79 @@
+/*
+ * SwampControls.c
+ *
+ *  Created on: Apr 26, 2016
+ *      Author: Jacob
+ */
+
+#include "SwampControls.h"
+
+int pump_relay_pin = GPIO_Pin_12;
+int fan_low_pin = GPIO_Pin_13;
+int fan_high_pin = GPIO_Pin_14;
+GPIO_TypeDef *pump_relay_port = GPIOB;
+
+
+void init_controls_gpio();
+
+
+void Init_InstanceControls()
+{
+	init_controls_gpio();
+	SetSafeState();
+}
+
+void Set_PumpState(Change_State request)
+{
+	switch (request.Pump) {
+		case OFF:
+			GPIOB->BRR = pump_relay_pin; //Pull pin LOW
+		break;
+		case ON:
+			GPIOB->BSRR = pump_relay_pin; //Pull pin HIGH
+		break;
+		default:
+			// Do nothing
+		break;
+	}
+}
+
+void Set_Fan_State(Change_State request)
+{
+	switch (request.Fan) {
+	case Fan_OFF:
+		GPIOB->BSRR = fan_low_pin;
+		GPIOB->BSRR = fan_high_pin;
+		//TODO: GPIO Fan OFF
+		break;
+	case Fan_Low:
+		GPIOB->BSRR = fan_high_pin;
+		GPIOB->BRR = fan_low_pin;
+		//TODO: GPIO Fan LOW
+		break;
+	case Fan_High:
+		GPIOB->BSRR = fan_low_pin;
+		GPIOB->BRR = fan_high_pin;
+		//TODO: GPIO Fan LOW
+		break;
+	default:
+		//TODO: Handle unexpected input
+		break;
+
+	}
+
+}
+
+///Make sure all relays are off at startup
+void SetSafeState()
+{
+	GPIOB->BSRR = pump_relay_pin | fan_low_pin | fan_high_pin;
+}
+
+void init_controls_gpio()
+{
+	GPIO_InitTypeDef Swamp_Control_Config; //Does not include USART thats taken care of with USART lib
+	Swamp_Control_Config.GPIO_Speed = GPIO_Speed_2MHz;
+	Swamp_Control_Config.GPIO_Mode = GPIO_Mode_Out_OD;
+	Swamp_Control_Config.GPIO_Pin = pump_relay_pin | fan_low_pin | fan_high_pin;
+	GPIO_Init(pump_relay_port, &Swamp_Control_Config);
+}

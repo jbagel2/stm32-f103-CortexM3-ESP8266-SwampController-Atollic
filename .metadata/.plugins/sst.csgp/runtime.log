@@ -1,0 +1,50 @@
+
+------------------------------------
+  Logging start.  ## CURRENT TIME  : [7/2, 2016   6:9  11.844]  ## COMMAND LINE  : 
+cmd /C "gen_csini.exe"
+------------------------------------
+[STD-IN] : C:\ARMDevelopment\STM32 Projects\F103\STM32-F103-SwampController-V2-Atollic\.metadata\.plugins\sst.csgp\bin\env_vars.txt
+GUI is waiting for subprocess to be done...
+Execution done. EXIT CODE = 0
+  Logging finished.  ## CURRENT TIME  : [7/2, 2016   6:9  14.716]
+------------------------------------
+
+------------------------------------
+  Logging start.  ## CURRENT TIME  : [7/9, 2016   5:37  21.311]  ## COMMAND LINE  : 
+cmd /C "gen_csini.exe"
+------------------------------------
+[STD-IN] : C:\ARMDevelopment\STM32 Projects\F103\STM32-F103-SwampController-V2-Atollic\.metadata\.plugins\sst.csgp\bin\env_vars.txt
+GUI is waiting for subprocess to be done...
+Execution done. EXIT CODE = 0
+  Logging finished.  ## CURRENT TIME  : [7/9, 2016   5:37  23.851]
+------------------------------------
+
+------------------------------------
+  Logging start.  ## CURRENT TIME  : [7/11, 2016   4:49  37.220]  ## COMMAND LINE  : 
+cmd /C "gen_csini.exe"
+------------------------------------
+[STD-IN] : C:\ARMDevelopment\STM32 Projects\F103\STM32-F103-SwampController-V2-Atollic\.metadata\.plugins\sst.csgp\bin\env_vars.txt
+GUI is waiting for subprocess to be done...
+Execution done. EXIT CODE = 0
+  Logging finished.  ## CURRENT TIME  : [7/11, 2016   4:49  39.804]
+------------------------------------
+
+------------------------------------
+  Logging start.  ## CURRENT TIME  : [7/11, 2016   6:2  30.772]  ## COMMAND LINE  : 
+cmd /C "gen_csini.exe"
+------------------------------------
+[STD-IN] : C:\ARMDevelopment\STM32 Projects\F103\STM32-F103-SwampController-V2-Atollic\.metadata\.plugins\sst.csgp\bin\env_vars.txt
+GUI is waiting for subprocess to be done...
+Execution done. EXIT CODE = 0
+  Logging finished.  ## CURRENT TIME  : [7/11, 2016   6:2  34.674]
+------------------------------------
+
+------------------------------------
+  Logging start.  ## CURRENT TIME  : [7/14, 2016   6:47  12.922]  ## COMMAND LINE  : 
+cmd /C "gen_csini.exe"
+------------------------------------
+[STD-IN] : C:\ARMDevelopment\STM32 Projects\F103\STM32-F103-SwampController-V2-Atollic\.metadata\.plugins\sst.csgp\bin\env_vars.txt
+GUI is waiting for subprocess to be done...
+Execution done. EXIT CODE = 0
+  Logging finished.  ## CURRENT TIME  : [7/14, 2016   6:47  19.687]
+------------------------------------

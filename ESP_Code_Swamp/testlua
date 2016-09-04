@@ -1,0 +1,5 @@
+
+config = require("config")
+connect = require("connect")
+
+connect.start()

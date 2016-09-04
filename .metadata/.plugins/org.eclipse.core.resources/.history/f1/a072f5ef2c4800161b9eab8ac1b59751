@@ -1,0 +1,37 @@
+/*
+ * RadientControls.h
+ *
+ *  Created on: Apr 26, 2016
+ *      Author: Jacob
+ */
+
+#ifndef SWAMPCONTROLS_H_
+#define SWAMPCONTROLS_H_
+
+#include <stm32f10x_gpio.h>
+#include "CustomStructs/InstanceStructs.h"
+
+int pump_relay_pin = GPIO_Pin_12;
+int fan_low_pin = GPIO_Pin_13;
+int fan_high_pin = GPIO_Pin_14;
+GPIO_TypeDef *pump_relay_port = GPIOB;
+
+typedef enum
+{
+	Fan_OFF = 0,
+	Fan_Low,
+	Fan_High
+}Fan_Mode;
+
+typedef enum
+{
+	OFF = 0,
+	ON
+}On_Off;
+
+void Init_InstanceControls();
+void Set_PumpState(Change_State request);
+void Set_Fan_State(Change_State request);
+
+
+#endif /* RADIENTCONTROLS_H_ */

@@ -1,0 +1,104 @@
+/*
+ * nodefirm.c
+ *
+ *  Created on: Feb 6, 2016
+ *      Author: Jacob
+ */
+
+#include "nodefirm.h"
+#include <stdio.h>
+#include <string.h>
+#include <strings.h>
+#include "CustomStructs/HelperFunctions.h"
+#include "Sys_Config/Sys_Config.h"
+#include <stm32f10x_dma.h>
+#include "USART/usart.h"
+#include <stdlib.h>
+
+char *ESP_Command_Buffer_Pntr;
+char ESP_Command_Buffer[RxBuffSize];
+
+extern volatile char USART3_RxBuffer[RxBuffSize];
+
+#define ESP_APP_COMMAND(commandEnum) (APPCommandsArray[(commandEnum)]) // ESP_APP_Commands
+
+const char *APPCommandsArray[3] = {
+		"app.StartRestService(", // )
+		"SaveNodeStatus(", // pump, valve, lineTemp1, lineTemp2)
+		"SaveNewTempHumid(" // temp, humid)
+};
+
+const char *NODECommandsArray[8] = {
+		"Ping()",
+		"wifi.sta.getap(listap)",
+		"=node.info()",
+		"=wifi.getmode()",
+		"node.restart()",
+		"StartRestService(80)",
+		"=node.info()",
+		"wifi.sta.disconnect()"
+};
+
+
+void SaveTempHumid(float temp, float humid)
+{
+	char comm[40];
+	char *commandString = (char *)ESP_APP_COMMAND(ESP_SAVE_TEMP_HUMID);
+	sprintf(comm,"%s%.2f,%.2f)",commandString,temp,humid);
+	ESP_SendCustomCommand_External_Wait(comm);
+}
+
+void SaveNodeStatus(uint16_t pump, uint16_t valve, float lineTemp1, float lineTemp2)
+{
+	//TODO: Call ESPCommand Array to send data
+}
+
+char *command_preamble = "::1234:";
+
+Change_State ESP_GetWaitingCommand_DMA()
+{
+	current_request.Hash = "9";
+	ESP_Command_Buffer_Pntr = memmem(USART3_RxBuffer,RxBuffSize,command_preamble,strlen(command_preamble));
+	if(ESP_Command_Buffer_Pntr){
+		strcpy(ESP_Command_Buffer,ESP_Command_Buffer_Pntr);
+		DMA_Cmd(DMA1_Channel3,DISABLE);
+
+		//Wipes the received message from the DMA buffer (using the pointer to the data)
+		//This makes sure the data doesn't get mistaken for a new request, on the next buffer polling.
+		ClearArray_Size(ESP_Command_Buffer_Pntr,strlen(ESP_Command_Buffer_Pntr));
+		DMA_Initialize(USART3_RxBuffer, RxBuffSize);
+
+		strtok(ESP_Command_Buffer, "<");
+		uint8_t command_type = atoi(strtok(NULL, ":"));
+		switch (command_type) {
+			case 1:
+				current_request.Pump = atoi(strtok(NULL, ":"));
+				current_request.Fan = atoi(strtok(NULL, ":"));
+				current_request.Room = atoi(strtok(NULL, ":"));
+				current_request.AutoTemp = atoi(strtok(NULL, ":"));
+				current_request.Hash = strtok(NULL, ":");
+				break;
+			default:
+				break;
+		}
+		//TODO: Process incoming command in DMA buffer
+
+	}
+	return current_request;
+}
+
+void ESP_SendAppCommand(ESP_Node_APP_Commands command)
+{
+	//ESP_SendCustomCommand_External_Wait(ESP_APP_COMMAND(command));
+}
+
+
+
+void StartRestService(uint16_t port)
+{
+	char comm[50];
+	char *commandString = (char *)ESP_APP_COMMAND(ESP_START_REST_SERVICE);
+	sprintf(comm,"%s%d)",commandString,port);
+	ESP_SendCustomCommand_External_Wait(comm);
+
+}

@@ -1,0 +1,274 @@
+/**
+*****************************************************************************
+**
+**  File        : main.c
+**
+**  Abstract    : main function.
+**
+**  Functions   : main
+**
+**  Environment : Atollic TrueSTUDIO/STM32
+**                STMicroelectronics STM32F10x Standard Peripherals Library
+**
+**  Distribution: The file is distributed "as is", without any warranty
+**                of any kind.
+**
+**  (c)Copyright Atollic AB.
+**  You may use this file as-is or modify it according to the needs of your
+**  project. This file may only be built (assembled or compiled and linked)
+**  using the Atollic TrueSTUDIO(R) product. The use of this file together
+**  with other tools than Atollic TrueSTUDIO(R) is not permitted.
+**
+*****************************************************************************
+*/
+/*
+ * Swamp Cooler Relay controller
+ *
+ * ClockOut -> PA8
+ *
+ * Pump -> PB12
+ * Fan Low -> PB13
+ * Fan High -> PB14
+ *
+ * USART3 TX -> PB10
+ * USART3 RX -> PB11
+ *
+ * DHT22 -> PB6 (leaf 16)
+ *
+ * DEBUG
+ * SWDIO -> PA13
+ * SWCLK -> PA14
+ * SWO -> PB3
+ *
+ *
+ * Fan Modes
+ * 0 -> Fan Off
+ * 1 -> Fan Low
+ * 2 -> Fan High
+ *
+ * Pump Modes
+ * 0 -> Pump Off
+ * 1 -> Pump On
+ *
+ */
+
+/* Includes */
+#include <stddef.h>
+#include "stm32f10x.h"
+#include "Time/time.h"
+#include "DHT22/dht22.h"
+#include "ESP8266/esp8266.h"
+#include "InstanceControls/SwampControls.h"
+
+// IF DEBUGGING
+//#define DEBUG
+
+/* Private typedef */
+/* Private define  */
+#define DHT_UPDATE_INTERVAL 15000
+
+/* Private macro */
+/* Private variables */
+DHT22_Data Current_DHT22_Reading;
+DHT22_Data Previous_DHT22_Reading;
+uint32_t lastDHT22update = 0;
+uint32_t lastDMACheck = 0;
+
+/* Private function prototypes */
+void Configure_HSI_Clock();
+void Configure_HSE_Clock();
+/* Private functions */
+
+
+#ifdef DEBUG
+
+#include "Debug/Debug_init.h"
+
+#define DEBUG_REPORT_INTERVAL 30000
+uint32_t lastDEBUGupdate = 0;
+
+void Debug_Enable()
+{
+	Debug_Init_BTN_1(ENABLE);
+}
+
+void SetSystemClockOut()
+{
+	GPIO_InitTypeDef GPIO_InitStructure;
+	RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOA, ENABLE);
+	RCC_APB2PeriphClockCmd(RCC_APB2ENR_AFIOEN, ENABLE);
+
+	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_8;
+	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF_PP;
+	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
+	GPIO_Init(GPIOA, &GPIO_InitStructure);
+	RCC_MCOConfig(RCC_MCO_PLLCLK_Div2);
+}
+
+
+#endif
+
+
+/**
+**===========================================================================
+**
+**  Abstract: main program
+**
+**===========================================================================
+*/
+int main(void)
+{
+
+	Configure_HSE_Clock();
+	//Init_Time(MILLISEC,64); //For HSI Clock
+	Init_Time(MILLISEC,72);
+#ifdef DEBUG
+	Debug_Enable();
+	SetSystemClockOut();
+#endif //"DEBUG"
+	DHT22_Init();
+	ESP_Init_DMA_USART3(9600);
+	ESP_On();
+
+	ESP_SendCustomCommand_External_Wait("uart.setup(0, 9600, 8, uart.PARITY_NONE, uart.STOPBITS_1, 0)");
+	ESP_SendCustomCommand_External_Wait("dofile(\"test_init.lua\")");
+
+	Init_InstanceControls();
+
+	StartRestService(80);
+
+while (1)
+  {
+	if((Millis() - lastDHT22update) >= DHT_UPDATE_INTERVAL)
+			{
+				lastDHT22update = Millis();
+				DHT22_Start_Read(&Current_DHT22_Reading, &Previous_DHT22_Reading);
+				if(Current_DHT22_Reading.Temp != 0 && Current_DHT22_Reading.CurrentPass == 1)
+				{
+					SaveTempHumid(Current_DHT22_Reading.Temp, Current_DHT22_Reading.Humid);
+				}
+
+			}
+	if((Millis() - lastDMACheck) >= DMA_Rx_Buff_Poll_Int_ms)
+		  {
+			  lastDMACheck = Millis();
+			  ESP_GetWaitingCommand_DMA();
+			  if(strcmp(current_request.Hash, "9") != 0)
+			  {
+				  Set_PumpState(current_request);
+				  Set_Fan_State(current_request);
+				  // TODO: process incoming zone:room for valve control
+			  }
+
+		  }
+  }
+
+}
+
+void Configure_HSE_Clock()
+{
+	RCC_ClocksTypeDef clocks;
+	RCC_GetClocksFreq(&clocks);
+
+	RCC_DeInit();
+
+	RCC_HSEConfig(RCC_HSE_ON);
+	while(RCC_GetFlagStatus(RCC_FLAG_HSERDY) == RESET) {}
+	FLASH_SetLatency(FLASH_ACR_LATENCY_2);
+	RCC_PLLConfig(RCC_PLLSource_HSE_Div1,RCC_CFGR_PLLMULL9);
+	RCC_PLLCmd(ENABLE);
+	while(RCC_GetFlagStatus(RCC_FLAG_PLLRDY) == RESET) {}
+	RCC_SYSCLKConfig(RCC_SYSCLKSource_PLLCLK);
+
+	RCC_HCLKConfig(RCC_SYSCLK_Div1);
+	RCC_PCLK1Config(RCC_HCLK_Div2);
+	RCC_PCLK2Config(RCC_HCLK_Div1);
+	RCC_ADCCLKConfig(RCC_PCLK2_Div2);
+
+	RCC_GetClocksFreq(&clocks);
+
+}
+
+void Configure_HSI_Clock()
+{
+	FLASH_SetLatency(FLASH_ACR_LATENCY_2);
+
+
+	RCC_HSICmd(ENABLE);
+	RCC_HSEConfig(DISABLE);
+	RCC_PLLConfig(RCC_PLLSource_HSI_Div2,RCC_CFGR_PLLMULL16);
+	RCC_PLLCmd(ENABLE);
+	while(RCC_GetFlagStatus(RCC_FLAG_PLLRDY) == RESET) {}
+	RCC_SYSCLKConfig(RCC_SYSCLKSource_PLLCLK);
+
+	RCC_HCLKConfig(RCC_SYSCLK_Div1);
+	RCC_PCLK1Config(RCC_HCLK_Div1);
+	RCC_PCLK2Config(RCC_HCLK_Div1);
+	RCC_ADCCLKConfig(RCC_PCLK2_Div2);
+}
+
+void Configure_LSE_Clock()
+{
+	RCC_LSEConfig(RCC_LSE_ON);
+	while(RCC_GetFlagStatus(RCC_FLAG_LSERDY) == RESET) {}
+	RCC_RTCCLKConfig(RCC_RTCCLKSource_LSE);
+}
+
+void Configure_RTC()
+{
+
+}
+
+#ifdef  USE_FULL_ASSERT
+
+/**
+  * @brief  Reports the name of the source file and the source line number
+  *   where the assert_param error has occurred.
+  * @param  file: pointer to the source file name
+  * @param  line: assert_param error line source number
+  * @retval None
+  */
+void assert_failed(uint8_t* file, uint32_t line)
+{
+  /* User can add his own implementation to report the file name and line number,
+     ex: printf("Wrong parameters value: file %s on line %d\r\n", file, line) */
+
+  /* Infinite loop */
+  while (1)
+  {
+  }
+}
+#endif
+
+/*
+ * Minimal __assert_func used by the assert() macro
+ * */
+void __assert_func(const char *file, int line, const char *func, const char *failedexpr)
+{
+  while(1)
+  {}
+}
+
+/*
+ * Minimal __assert() uses __assert__func()
+ * */
+void __assert(const char *file, int line, const char *failedexpr)
+{
+   __assert_func (file, line, NULL, failedexpr);
+}
+
+#ifdef USE_SEE
+#ifndef USE_DEFAULT_TIMEOUT_CALLBACK
+/**
+  * @brief  Basic management of the timeout situation.
+  * @param  None.
+  * @retval sEE_FAIL.
+  */
+uint32_t sEE_TIMEOUT_UserCallback(void)
+{
+  /* Return with error code */
+  return sEE_FAIL;
+}
+#endif
+#endif /* USE_SEE */
+

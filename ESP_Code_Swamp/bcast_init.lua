@@ -1,0 +1,5 @@
+config = require("config")
+time = require("time")
+time.GetTime()
+bcast = require("bcast_srv")
+bcast.listen()
